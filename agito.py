@@ -1079,24 +1079,25 @@ check_svn_repo()
 
 commits = shelve.open("%s/commits.db" % gitrepo.path)
 
-# Create branches. If the branches have not been specified in the
-# configuration file, fall back to a single branch that captures the
-# history of the entire repository.
+if __name__ == "__main__":
 
-if "BRANCHES" in config:
-	branches = config["BRANCHES"]
-else:
-	branches = { "/" : "master" }
+	# Create branches. If the branches have not been specified in the
+	# configuration file, fall back to a single branch that captures the
+	# history of the entire repository.
 
-for path, rev, branch in parse_svn_path_map(branches):
-	print "===== %s" % branch
-	head_id = get_history_for_path(path, rev)
-	gitrepo.refs['refs/heads/%s' % branch] = head_id
+	if "BRANCHES" in config:
+		branches = config["BRANCHES"]
+	else:
+		branches = { "/" : "master" }
 
-for path, rev, tag in parse_svn_path_map(config.get("TAGS", {})):
-	print "===== %s" % tag
-	head_id = get_history_for_path(path, rev)
-	if config.get("CREATE_TAG_OBJECTS", True):
-		head_id = create_tag_object(tag, head_id)
-	gitrepo.refs['refs/tags/%s' % tag] = head_id
+	for path, rev, branch in parse_svn_path_map(branches):
+		print "===== %s" % branch
+		head_id = get_history_for_path(path, rev)
+		gitrepo.refs['refs/heads/%s' % branch] = head_id
 
+	for path, rev, tag in parse_svn_path_map(config.get("TAGS", {})):
+		print "===== %s" % tag
+		head_id = get_history_for_path(path, rev)
+		if config.get("CREATE_TAG_OBJECTS", True):
+			head_id = create_tag_object(tag, head_id)
+		gitrepo.refs['refs/tags/%s' % tag] = head_id
