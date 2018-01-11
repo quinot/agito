@@ -1101,3 +1101,8 @@ if __name__ == "__main__":
 		if config.get("CREATE_TAG_OBJECTS", True):
 			head_id = create_tag_object(tag, head_id)
 		gitrepo.refs['refs/tags/%s' % tag] = head_id
+
+# Break reference cycle between config and agito, otherwise the finalization
+# of the commits shelf will raise an uncatchable exception.
+
+del config["agito"]
