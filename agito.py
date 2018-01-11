@@ -959,23 +959,30 @@ def parse_svn_path(path, git_name):
 	  List of tuples, each tuple containing an expanded Subversion path
 	  and git name.
 	"""
-	if '%' not in path:
-		return [(path, git_name)]
+	if "@" in path:
+		path, revspec = path.split("@")
+		revnum = int(revspec)
+	else:
+		revnum = None
 
+	if '%' not in path:
+		return [(path, revnum, git_name)]
+
+	rev = svn_revision(revnum)
 	svn_dir = os.path.dirname(path)
 	svn_filepattern = os.path.basename(path)
 	filename_re = re.escape(svn_filepattern).replace('\\%', '(.*)') + '$'
 	filename_re = re.compile(filename_re)
 
 	# List that directory and find entries that match.
-	entries = svnclient.ls(svn_path(svn_dir), recurse=False)
+	entries = svnclient.ls(svn_path(svn_dir), revision=rev, recurse=False)
 	results = []
 	for entry in entries:
 		_, filename = entry.name.rsplit('/', 1)
 		match = filename_re.match(filename)
 		if match:
 			x = match.group(1)
-			results.append((path.replace('%', x),
+			results.append((path.replace('%', x), revnum,
 			                git_name.replace('%', x)))
 
 	return results
@@ -1069,6 +1076,7 @@ reflow_first_line = config.get('REFLOW_FIRST_LINE', True)
 gitrepo = open_or_init_repo(config["GIT_REPO"])
 svnclient = pysvn.Client()
 check_svn_repo()
+
 commits = shelve.open("%s/commits.db" % gitrepo.path)
 
 # Create branches. If the branches have not been specified in the
@@ -1080,14 +1088,14 @@ if "BRANCHES" in config:
 else:
 	branches = { "/" : "master" }
 
-for path, branch in parse_svn_path_map(branches):
+for path, rev, branch in parse_svn_path_map(branches):
 	print "===== %s" % branch
-	head_id = get_history_for_path(path)
+	head_id = get_history_for_path(path, rev)
 	gitrepo.refs['refs/heads/%s' % branch] = head_id
 
-for path, tag in parse_svn_path_map(config.get("TAGS", {})):
+for path, rev, tag in parse_svn_path_map(config.get("TAGS", {})):
 	print "===== %s" % tag
-	head_id = get_history_for_path(path)
+	head_id = get_history_for_path(path, rev)
 	if config.get("CREATE_TAG_OBJECTS", True):
 		head_id = create_tag_object(tag, head_id)
 	gitrepo.refs['refs/tags/%s' % tag] = head_id
