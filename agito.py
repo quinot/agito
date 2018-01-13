@@ -67,10 +67,16 @@ class Directory(object):
 		self.subdirs = {}
 
 	def __get_subdir(self, name):
+		# Lazily create subdirectory objects as they are needed.
+		# Also create the underlying tree if needed (can be missing
+		# if the creation has been filtered out).
+
+		if name not in self.tree:
+			self.mkdir(name)
+
 		if name in self.subdirs:
 			return self.subdirs[name]
 
-		# Lazily create subdirectory objects as they are needed.
 		_, sha = self.tree[name]
 		subdir = Directory(sha)
 		self.subdirs[name] = subdir
@@ -340,7 +346,11 @@ def process_add_modify(treedir, filepath, log, changed_path):
 		                 revision)
 
 def process_delete(treedir, filepath, log, changed_path):
-	del treedir[filepath]
+	# Note: filepath may be missing from treedir due to the file
+	# creation having been filtered out.
+
+	if filepath in treedir:
+		del treedir[filepath]
 
 def mutate_tree_from_log(treedir, path, log):
 	"""Given an existing tree, mutate it like in the given Subversion
